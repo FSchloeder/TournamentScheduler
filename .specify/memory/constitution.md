@@ -1,50 +1,123 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  - Version change: 0.0.0 → 1.0.0
+  - Added principles:
+    1. Domain Integrity (new)
+    2. Algorithm Pluggability (new)
+    3. API-First (new)
+    4. Test-Driven (new)
+    5. Progressive Deployment (new)
+    6. Simplicity First (new)
+  - Added sections: Tournament Domain Constraints, Development Workflow
+  - Removed sections: none
+  - Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ compatible (Constitution Check section is generic)
+    - .specify/templates/spec-template.md ✅ compatible (user stories + requirements structure fits)
+    - .specify/templates/tasks-template.md ✅ compatible (phase-based task structure aligns)
+  - Follow-up TODOs: none
+-->
+
+# Tournament Scheduler Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Domain Integrity
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Tournament rules (3-division system, 6 gladiator classes, class-matchup restrictions) MUST be encoded as hard constraints in the domain layer. These constraints are non-negotiable and MUST NOT be bypassed by any API endpoint, scheduling algorithm, or UI action.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- Same-class matchups are FORBIDDEN (except Provocator vs Provocator).
+- All matchup validation logic MUST live in the backend domain layer, never in the frontend.
+- Division and class definitions (Heavy: Provocator/Murmillo/Secutor; Medium: Thraex/Hoplomachus; Light: Retiarius) are fixed and MUST NOT be made user-configurable.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Algorithm Pluggability
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+Scheduling algorithms MUST be swappable via the Strategy pattern in `backend/src/tournament/scheduling/`. The system MUST NOT be coupled to any single scheduling approach.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+- Each algorithm implements a common interface (input: list of fighters with classes; output: list of valid matchups/rounds).
+- MVP uses simple round-robin within valid matchups.
+- Optimal algorithms (constraint-satisfaction, graph-coloring, etc.) are added after research without modifying consuming code.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. API-First
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The backend exposes a REST API; the frontend consumes it. All business logic and domain validation MUST reside in the backend.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- The frontend MUST NOT implement domain rules (matchup validation, scoring, eligibility checks).
+- API contracts are defined before frontend implementation begins for each feature.
+- The frontend proxies `/api` requests to the backend via Vite dev server config.
+
+### IV. Test-Driven
+
+Domain rules (matchup validation, scoring logic, referee eligibility, scheduling constraints) MUST have test coverage. Tests SHOULD be written before or alongside implementation.
+
+- Matchup constraint validation MUST be tested with both valid and invalid class pairings.
+- Scheduling algorithm output MUST be tested against domain constraints.
+- API endpoints MUST have at least smoke tests for happy-path responses.
+
+### V. Progressive Deployment
+
+Public-facing views (brackets, schedules, results) are read-only. Admin functionality (fighter registration, match management, scoring) starts as local-only.
+
+- Read-only public views are the first deployment target.
+- Admin interfaces require no authentication initially (local-only access).
+- Authentication is added incrementally when admin access moves beyond localhost.
+
+### VI. Simplicity First
+
+Start with the simplest viable approach. Add complexity only when a concrete need is demonstrated.
+
+- Round-robin league mode first; elimination bracket modes added incrementally.
+- SQLite for storage initially; migrate to PostgreSQL only if scaling demands it.
+- No premature abstractions: three similar lines of code are better than a speculative helper function.
+- YAGNI applies: do not build for hypothetical future requirements.
+
+## Tournament Domain Constraints
+
+These are the fixed domain rules that Principle I (Domain Integrity) protects:
+
+**Gladiator Classes (6):**
+
+| Class | Division | Weapon | Shield |
+|-------|----------|--------|--------|
+| Provocator | Heavy | Gladius (short sword) | Large rectangular |
+| Murmillo | Heavy | Gladius (short sword) | Large rectangular |
+| Secutor | Heavy | Gladius (short sword) | Large rectangular |
+| Thraex | Medium | Sica (curved sword) | Small square |
+| Hoplomachus | Medium | Spear + dagger | Small round |
+| Retiarius | Light | Trident + net | None |
+
+**Matchup Matrix:**
+- Same-class = FORBIDDEN (except Provocator vs Provocator)
+- Cross-division and within-division cross-class matchups = ALLOWED
+
+**Scheduling Impact:**
+- Standard elimination brackets break with these constraints because not all fighters can face all others.
+- Algorithms MUST handle arbitrary class distributions while respecting the matchup matrix.
+
+## Development Workflow
+
+**Monorepo Structure:**
+- `backend/` — Python (FastAPI + SQLAlchemy), managed with `uv`
+- `frontend/` — React + TypeScript (Vite)
+
+**Spec-Kit Workflow (for all feature development):**
+1. `/speckit.constitution` — Establish/amend project principles (this file)
+2. `/speckit.specify` — Write feature specification
+3. `/speckit.plan` — Create implementation plan
+4. `/speckit.tasks` — Generate actionable tasks
+5. `/speckit.implement` — Execute implementation
+
+**Branching:** Feature branches off `master`. Commits reference spec-kit task IDs when applicable.
+
+**Code Quality:**
+- Backend: `ruff` for linting/formatting, `pytest` for testing.
+- Frontend: ESLint + TypeScript strict mode.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution defines the non-negotiable principles for the Tournament Scheduler project. All implementation decisions, code reviews, and architectural choices MUST comply with these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **Amendments** require updating this file, incrementing the version, and verifying consistency with spec-kit templates.
+- **Versioning** follows semantic versioning: MAJOR for principle removals/redefinitions, MINOR for new principles or material expansions, PATCH for clarifications and wording fixes.
+- **Compliance** is verified during spec-kit plan phase (Constitution Check gate) and during code review.
+
+**Version**: 1.0.0 | **Ratified**: 2026-03-04 | **Last Amended**: 2026-03-04
